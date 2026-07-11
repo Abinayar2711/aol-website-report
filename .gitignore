@@ -1,0 +1,13 @@
+# Never push raw / large / sensitive data
+*.csv
+*.jpeg
+*.jpg
+1748_new/
+deprecated/
+__pycache__/
+*.pyc
+streamlit.log
+.DS_Store
+
+# ...except the single deduped file the app renders (15 MB, pseudonymous IDs only)
+!aol_website_rebuilt.csv
