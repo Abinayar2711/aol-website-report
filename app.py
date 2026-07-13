@@ -15,6 +15,13 @@ from category_map import categorise, website_rows, CATEGORIES
 st.set_page_config(page_title="Website Registrations Report", layout="wide",
                    page_icon="📈", initial_sidebar_state="collapsed")
 
+# UPDATE THIS whenever aol_website_rebuilt.csv is rebuilt.
+# It cannot be read from the file's mtime: git does not preserve modification times, so on
+# Streamlit Cloud the CSV carries the DEPLOY timestamp and the page would confidently show
+# today's date on stale data. An explicit constant is the only honest option.
+# CiviCRM participant details extracted 10 Jul 2026; base view_pax extract 11 Jul 2026.
+DATA_AS_OF = "10–11 Jul 2026"
+
 # ---- Look & feel -----------------------------------------------------------------
 # Ink is INHERITED from the active Streamlit theme, never hardcoded: the browser's
 # prefers-color-scheme and Streamlit's theme are independent, so a media query here
@@ -50,6 +57,12 @@ CSS = """
   margin: 0 0 0.3rem 0; padding: 0; line-height: 1.15;
 }
 .hdr p { opacity: 0.7; font-size: 0.92rem; margin: 0; line-height: 1.55; }
+/* Data-freshness badge: readers must not have to guess how old the numbers are. */
+.hdr .stamp {
+  display: inline-block; background: var(--surface-2); border: 1px solid var(--hairline);
+  border-radius: 999px; padding: 0.08rem 0.6rem;
+  font-size: 0.78rem; font-weight: 650; opacity: 0.95;
+}
 
 /* KPI tiles. Grid, not flex-wrap: every tile gets the same width AND the same height, so a
    long value like "Reference from a friend" wrapping to two lines can no longer leave the
@@ -180,7 +193,8 @@ st.markdown(
     '<div class="hdr">'
     '<h1>Website Registrations Report</h1>'
     '<p>Registrations captured on <b>artofliving.org</b>, bucketed by course start date.<br>'
-    'Source: aol_website_rebuilt.csv</p>'
+    f'Source: aol_website_rebuilt.csv &nbsp;·&nbsp; '
+    f'<span class="stamp">Data as of {DATA_AS_OF}</span></p>'
     '</div>', unsafe_allow_html=True)
 
 periods = ["All periods"] + sorted(d.FY.unique())
