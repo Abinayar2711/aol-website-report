@@ -24,44 +24,75 @@ st.set_page_config(page_title="Website Registrations Report", layout="wide",
 CSS = """
 <style>
 :root {
-  --surface-1: rgba(128,128,128,0.06);
-  --hairline: rgba(128,128,128,0.28);
+  --surface-1: rgba(128,128,128,0.055);
+  --surface-2: rgba(128,128,128,0.10);
+  --hairline: rgba(128,128,128,0.24);
   --accent: #3987e5;
+  /* Categorical slots 1-2, validated for CVD + contrast in BOTH modes (dE 95).
+     No Source is deliberately gray: it encodes an absence, not a third category. */
+  --c-referral: #3987e5;
+  --c-marketing: #d9703f;
+  --c-nosource: rgba(128,128,128,0.55);
 }
-.block-container { padding-top: 2.2rem; max-width: 1400px; }
+.block-container { padding-top: 1.6rem; max-width: 1360px; }
 
 /* Header band */
 .hdr {
-  border-left: 4px solid var(--accent);
   background: var(--surface-1);
   border: 1px solid var(--hairline);
   border-left: 4px solid var(--accent);
-  border-radius: 10px;
-  padding: 1.1rem 1.3rem;
-  margin-bottom: 1.1rem;
+  border-radius: 12px;
+  padding: 1.3rem 1.5rem;
+  margin-bottom: 1.3rem;
 }
 .hdr h1 {
-  font-size: 1.65rem; font-weight: 650; letter-spacing: -0.01em;
-  margin: 0 0 0.25rem 0; padding: 0;
+  font-size: 1.85rem; font-weight: 700; letter-spacing: -0.02em;
+  margin: 0 0 0.3rem 0; padding: 0; line-height: 1.15;
 }
-.hdr p { opacity: 0.75; font-size: 0.86rem; margin: 0; line-height: 1.5; }
+.hdr p { opacity: 0.7; font-size: 0.92rem; margin: 0; line-height: 1.55; }
 
-/* KPI tiles */
-.kpis { display: flex; gap: 0.75rem; margin: 0.2rem 0 1.4rem 0; flex-wrap: wrap; }
+/* KPI tiles. Grid, not flex-wrap: every tile gets the same width AND the same height, so a
+   long value like "Reference from a friend" wrapping to two lines can no longer leave the
+   row ragged. Content is pinned top/bottom inside each tile. */
+.kpis {
+  display: grid; grid-template-columns: 1.35fr repeat(4, 1fr);
+  gap: 0.7rem; margin: 0.4rem 0 1.6rem 0;
+}
 .kpi {
-  flex: 1 1 180px; background: var(--surface-1);
-  border: 1px solid var(--hairline); border-radius: 10px;
-  padding: 0.85rem 1rem;
+  background: var(--surface-1); border: 1px solid var(--hairline);
+  border-radius: 12px; padding: 0.95rem 1.1rem;
+  display: flex; flex-direction: column; justify-content: space-between;
+  min-height: 118px;
 }
 .kpi .lbl {
-  opacity: 0.6; font-size: 0.72rem; font-weight: 600;
-  letter-spacing: 0.04em; text-transform: uppercase; margin-bottom: 0.3rem;
+  opacity: 0.55; font-size: 0.68rem; font-weight: 700;
+  letter-spacing: 0.06em; text-transform: uppercase;
 }
 /* Proportional figures at display size; tabular is for columns, not heroes. */
-.kpi .val { font-size: 1.55rem; font-weight: 650; line-height: 1.15; }
-.kpi.hero .val { font-size: 2.5rem; }
-.kpi.hero { border-left: 4px solid var(--accent); }
-.kpi .sub { opacity: 0.7; font-size: 0.78rem; margin-top: 0.2rem; }
+.kpi .val { font-size: 1.45rem; font-weight: 700; line-height: 1.2; margin: 0.35rem 0 0.2rem 0; }
+.kpi .val.sm { font-size: 1.12rem; }          /* long text values don't blow the tile out */
+.kpi.hero { border-left: 4px solid var(--accent); background: var(--surface-2); }
+.kpi.hero .val { font-size: 2.6rem; letter-spacing: -0.02em; }
+.kpi .sub { opacity: 0.6; font-size: 0.76rem; }
+
+/* Source-mix share bar: one 100% stacked row. A 2px surface gap separates the segments so
+   they read as distinct marks; every segment is directly labelled, so identity never
+   depends on colour alone. */
+.mixwrap { margin: 0 0 1.7rem 0; }
+.mix { display: flex; height: 30px; gap: 2px; margin-bottom: 0.55rem; }
+.mix span {
+  display: flex; align-items: center; justify-content: center;
+  font-size: 0.74rem; font-weight: 700; color: #fff; overflow: hidden; white-space: nowrap;
+}
+.mix span:first-child { border-radius: 5px 0 0 5px; }
+.mix span:last-child  { border-radius: 0 5px 5px 0; }
+/* The no-source segment is a low-chroma gray by design, so it cannot carry white text.
+   Inherit the theme's ink instead — readable on the gray in both light and dark. */
+.mix span.muted { color: inherit; opacity: 0.95; }
+.key { display: flex; gap: 1.4rem; flex-wrap: wrap; font-size: 0.8rem; }
+.key i { width: 10px; height: 10px; border-radius: 3px; display: inline-block; margin-right: 0.4rem; }
+.key b { font-weight: 650; font-variant-numeric: tabular-nums; }
+.key em { opacity: 0.6; font-style: normal; }
 
 /* Section headers. A rule above each one does the separating, so sections read as
    distinct blocks rather than one continuous column of tables. */
@@ -170,8 +201,10 @@ _mk = int((view.bucket == "Marketing Channels (YT/Google/Events/Emails/LinkedIn/
 _ns = int((view.bucket == "No Source Captured").sum())
 
 def kpi(label, value, sub="", hero=False):
+    # Long text values get a smaller class rather than wrapping the tile out of alignment.
+    cls = "val sm" if not hero and len(str(value)) > 14 else "val"
     return (f'<div class="kpi{" hero" if hero else ""}"><div class="lbl">{label}</div>'
-            f'<div class="val">{value}</div><div class="sub">{sub}</div></div>')
+            f'<div class="{cls}">{value}</div><div class="sub">{sub}</div></div>')
 
 st.markdown(
     '<div class="kpis">'
@@ -183,6 +216,21 @@ st.markdown(
     + kpi("Marketing channels", pct(_mk), f"{_mk:,} registrations")
     + kpi("No source captured", pct(_ns), f"{_ns:,} registrations")
     + '</div>', unsafe_allow_html=True)
+
+# ---- Source-mix share bar (same three bucket counts as the table below) -------------
+_tf = int((view.bucket == "Teacher / Friends / Other AOL Programs").sum())
+_mix = [("Teacher / Friends / Other AOL Programs", _tf, "var(--c-referral)", ""),
+        ("Marketing Channels", _mk, "var(--c-marketing)", ""),
+        ("No Source Captured", _ns, "var(--c-nosource)", " muted")]
+if TOTAL:
+    bars = "".join(
+        f'<span class="{m.strip()}" style="width:{v / TOTAL * 100:.2f}%;background:{c}">'
+        f'{pct(v) if v / TOTAL > 0.06 else ""}</span>' for _, v, c, m in _mix)
+    keys = "".join(
+        f'<span><i style="background:{c}"></i><b>{v:,}</b> <em>{lbl} · {pct(v)}</em></span>'
+        for lbl, v, c, _m in _mix)
+    st.markdown(f'<div class="mixwrap"><div class="mix">{bars}</div>'
+                f'<div class="key">{keys}</div></div>', unsafe_allow_html=True)
 
 # ---- Page 1: the WhatsApp layout -------------------------------------------------
 left, right = st.columns([1, 1])
