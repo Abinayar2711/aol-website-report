@@ -55,7 +55,7 @@ CSS = """
    long value like "Reference from a friend" wrapping to two lines can no longer leave the
    row ragged. Content is pinned top/bottom inside each tile. */
 .kpis {
-  display: grid; grid-template-columns: 1.35fr repeat(4, 1fr);
+  display: grid; grid-template-columns: 1.35fr repeat(3, 1fr);
   gap: 0.7rem; margin: 0.4rem 0 1.6rem 0;
 }
 .kpi {
@@ -213,7 +213,6 @@ st.markdown(
           f"{int(_cat.iloc[0]):,} regs · {pct(_cat.iloc[0])}" if len(_cat) else "")
     + kpi("Top captured source", _src.index[0] if len(_src) else "—",
           f"{int(_src.iloc[0]):,} regs · {pct(_src.iloc[0])}" if len(_src) else "")
-    + kpi("Marketing channels", pct(_mk), f"{_mk:,} registrations")
     + kpi("No source captured", pct(_ns), f"{_ns:,} registrations")
     + '</div>', unsafe_allow_html=True)
 
