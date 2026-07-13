@@ -63,17 +63,26 @@ CSS = """
 .kpi.hero { border-left: 4px solid var(--accent); }
 .kpi .sub { opacity: 0.7; font-size: 0.78rem; margin-top: 0.2rem; }
 
-/* Section headers */
+/* Section headers. A rule above each one does the separating, so sections read as
+   distinct blocks rather than one continuous column of tables. */
 .sec {
-  display: flex; align-items: center; gap: 0.55rem;
-  margin: 0.2rem 0 0.6rem 0;
+  display: flex; align-items: baseline; gap: 0.6rem;
+  margin: 2.4rem 0 0.9rem 0;
+  padding-top: 1.1rem;
+  border-top: 1px solid var(--hairline);
 }
-.sec .bar { width: 3px; height: 1.05rem; background: var(--accent); border-radius: 2px; }
-.sec .ttl { font-size: 1.02rem; font-weight: 650; letter-spacing: -0.005em; }
+.sec.tight { margin-top: 1.6rem; }          /* for a section that follows st.divider() */
+.sec .bar {
+  width: 4px; height: 1.35rem; background: var(--accent);
+  border-radius: 2px; align-self: center;
+}
+.sec .ttl { font-size: 1.4rem; font-weight: 700; letter-spacing: -0.015em; }
 .sec .cnt {
-  opacity: 0.6; font-size: 0.78rem; font-weight: 500;
+  opacity: 0.65; font-size: 0.92rem; font-weight: 500;
   font-variant-numeric: tabular-nums;
 }
+/* Breathing room under each table so the next section isn't crowded. */
+[data-testid="stDataFrame"] { margin-bottom: 0.9rem; }
 
 /* Tables: hairline ring, tabular figures so number columns align */
 [data-testid="stDataFrame"] {
@@ -91,10 +100,17 @@ CSS = """
 st.markdown(CSS, unsafe_allow_html=True)
 
 
-def section(title, count=None):
+def section(title, count=None, tight=False):
     cnt = f'<span class="cnt">{count}</span>' if count else ""
-    st.markdown(f'<div class="sec"><span class="bar"></span>'
+    st.markdown(f'<div class="sec{" tight" if tight else ""}"><span class="bar"></span>'
                 f'<span class="ttl">{title}</span>{cnt}</div>', unsafe_allow_html=True)
+
+
+def fit(df):
+    """Height that shows every row, Grand Total included. Streamlit's default is a fixed ~400px
+    that does not grow with baseFontSize, so at 18px the tables silently scroll and the last
+    rows get cut off. Row height is ~40px at this font; the +12 keeps the last row off the edge."""
+    return (len(df) + 1) * 40 + 12
 
 BUCKET = {
     "Reference from a friend": "Teacher / Friends / Other AOL Programs",
@@ -180,7 +196,7 @@ with left:
                        "Registration Count": prog.values,
                        "% of Total Reg": [pct(v) for v in prog.values]})
     pt.loc[len(pt)] = ["Grand Total", int(prog.sum()), ""]
-    st.dataframe(pt, hide_index=True, use_container_width=True,
+    st.dataframe(pt, hide_index=True, use_container_width=True, height=fit(pt),
                  column_config={"Registration Count": st.column_config.NumberColumn(format="%d")})
 
 with right:
@@ -189,7 +205,7 @@ with right:
     src = src[src > 0]
     sd = pd.DataFrame({"How did you find us": src.index, "Registration Count": src.values})
     sd.loc[len(sd)] = ["Grand Total", int(src.sum())]
-    st.dataframe(sd, hide_index=True, use_container_width=True,
+    st.dataframe(sd, hide_index=True, use_container_width=True, height=fit(sd),
                  column_config={"Registration Count": st.column_config.NumberColumn(format="%d")})
 
     section("Source Buckets")
@@ -198,17 +214,22 @@ with right:
                        "Reg.": buck.values,
                        "% of Website": [pct(v) for v in buck.values]})
     bd.loc[len(bd)] = ["Total", int(buck.sum()), "100.00%"]
-    st.dataframe(bd, hide_index=True, use_container_width=True,
+    st.dataframe(bd, hide_index=True, use_container_width=True, height=fit(bd),
                  column_config={"Reg.": st.column_config.NumberColumn(format="%d")})
 
 st.divider()
 
 # ---- Below: source buckets by FY -------------------------------------------------
-section("Source Buckets by Financial Year", "all periods")
+section("Source Buckets by Financial Year", "all periods", tight=True)
 bf = (d.pivot_table(index="bucket", columns="FY", aggfunc="size", fill_value=0)
       .reindex(BUCKET_ORDER).fillna(0).astype(int))
 bf["Total"] = bf.sum(axis=1)
-st.dataframe(bf, use_container_width=True)
+bf.loc["Total (all sources)"] = bf.sum(axis=0)   # per-FY totals; the column totals were already there
+st.dataframe(bf, use_container_width=True, height=fit(bf),
+             column_config={c: st.column_config.NumberColumn(format="%d") for c in bf.columns})
+st.caption("Each column totals that financial year; the Total column totals each source bucket "
+           "across all years. FY 2023-24 source data is 96% unset — see the caveat before comparing "
+           "source mix across years.")
 
 # ---- Below: category composition drill-down --------------------------------------
 section("Category composition — what got summed together", period)

@@ -1,6 +1,9 @@
 [theme]
 primaryColor = "#2a78d6"
 font = "sans serif"
+# Streamlit renders st.dataframe to a canvas, so CSS cannot size table text.
+# baseFontSize is the only lever that reaches it. Default is 16.
+baseFontSize = 18
 
 [server]
 headless = true
