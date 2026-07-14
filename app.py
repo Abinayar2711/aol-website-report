@@ -57,6 +57,13 @@ CSS = """
   margin: 0 0 0.3rem 0; padding: 0; line-height: 1.15;
 }
 .hdr p { opacity: 0.7; font-size: 0.92rem; margin: 0; line-height: 1.55; }
+/* The one line that defines what is being counted. Full-opacity and boxed — it is the context
+   for every number below it, not a footnote. */
+.hdr p.scope {
+  opacity: 1; font-size: 1rem; font-weight: 500;
+  background: var(--surface-2); border: 1px solid var(--hairline);
+  border-radius: 8px; padding: 0.6rem 0.85rem; margin: 0 0 0.7rem 0;
+}
 /* Data-freshness badge: readers must not have to guess how old the numbers are. */
 .hdr .stamp {
   display: inline-block; background: var(--surface-2); border: 1px solid var(--hairline);
@@ -125,6 +132,16 @@ CSS = """
   opacity: 0.65; font-size: 0.92rem; font-weight: 500;
   font-variant-numeric: tabular-nums;
 }
+/* Definition notes. Sit directly under the measure they define, quieter than body text but
+   still legible — a note nobody can read is worse than no note. */
+.note {
+  font-size: 0.82rem; line-height: 1.5; opacity: 0.72;
+  border-left: 2px solid var(--hairline);
+  padding: 0.15rem 0 0.15rem 0.7rem;
+  margin: -0.2rem 0 1.1rem 0;
+}
+.note b { font-weight: 650; opacity: 0.9; }
+
 /* Breathing room under each table so the next section isn't crowded. */
 [data-testid="stDataFrame"] { margin-bottom: 0.9rem; }
 
@@ -148,6 +165,12 @@ def section(title, count=None, tight=False):
     cnt = f'<span class="cnt">{count}</span>' if count else ""
     st.markdown(f'<div class="sec{" tight" if tight else ""}"><span class="bar"></span>'
                 f'<span class="ttl">{title}</span>{cnt}</div>', unsafe_allow_html=True)
+
+
+def note(text):
+    """A definition line under a measure. Every number on this page is a choice about what to
+    count; the note says which choice, so nobody has to open the code to find out."""
+    st.markdown(f'<div class="note">{text}</div>', unsafe_allow_html=True)
 
 
 def fit(df):
@@ -192,8 +215,10 @@ d = load()
 st.markdown(
     '<div class="hdr">'
     '<h1>Website Registrations Report</h1>'
-    '<p>Registrations captured on <b>artofliving.org</b>, bucketed by course start date.<br>'
-    f'Source: aol_website_rebuilt.csv &nbsp;·&nbsp; '
+    '<p class="scope">Participants who came from the <b>website</b> (artofliving.org) and '
+    '<b>did the program</b> in the selected FY — counted on <b>course start date</b>, '
+    'not registration date.</p>'
+    f'<p>Source: aol_website_rebuilt.csv &nbsp;·&nbsp; '
     f'<span class="stamp">Data as of {DATA_AS_OF}</span></p>'
     '</div>', unsafe_allow_html=True)
 
@@ -230,6 +255,10 @@ st.markdown(
     + kpi("No source captured", pct(_ns), f"{_ns:,} registrations")
     + '</div>', unsafe_allow_html=True)
 
+note('<b>Top program</b> — biggest of the 17 CRM categories. &nbsp;·&nbsp; '
+     '<b>Top captured source</b> — biggest <i>answered</i> source (No Source excluded). '
+     '&nbsp;·&nbsp; <b>No source captured</b> — the question was left blank.')
+
 # ---- Source-mix share bar (same three bucket counts as the table below) -------------
 _tf = int((view.bucket == "Teacher / Friends / Other AOL Programs").sum())
 _mix = [("Teacher / Friends / Other AOL Programs", _tf, "var(--c-referral)", ""),
@@ -244,6 +273,12 @@ if TOTAL:
         for lbl, v, c, _m in _mix)
     st.markdown(f'<div class="mixwrap"><div class="mix">{bars}</div>'
                 f'<div class="key">{keys}</div></div>', unsafe_allow_html=True)
+
+    # What goes in each bucket, listed from the data. This is the question that gets asked every
+    # time the bar is shown, so it is answered next to the bar.
+    note('<b>Teacher / Friends / Other AOL Programs</b> = friend, AOL teacher, another AOL '
+         'program. &nbsp;·&nbsp; <b>Marketing Channels</b> = Google, Youtube, Events, Emails, '
+         'LinkedIn, Twitter, News. &nbsp;·&nbsp; <b>No Source Captured</b> = blank, not a channel.')
 
 # ---- Page 1: the WhatsApp layout -------------------------------------------------
 left, right = st.columns([1, 1])
@@ -260,6 +295,16 @@ with left:
     st.dataframe(pt, hide_index=True, use_container_width=True, height=fit(pt),
                  column_config={"Registration Count": st.column_config.NumberColumn(format="%d")})
 
+    # "Others" is the one category nobody can guess the contents of, and it is a residual: it
+    # changes with the FY filter. Spell it out from the data rather than hardcoding a list.
+    oth = view[view.category == "Others"]
+    if len(oth):
+        by_tag = oth.groupby("tag").size().sort_values(ascending=False)
+        note('<b>Program Type</b> — the CRM\'s 17 Course Categories. &nbsp;·&nbsp; '
+             f'<b>Others ({len(oth):,})</b> = '
+             + ", ".join(f"{t} ({int(n):,})" for t, n in by_tag.items())
+             + '. Expand it below to see every event.')
+
 with right:
     section("How Did You Find Us")
     src = view.groupby("source").size().reindex(SRC_RANK).fillna(0).astype(int)
@@ -268,6 +313,7 @@ with right:
     sd.loc[len(sd)] = ["Grand Total", int(src.sum())]
     st.dataframe(sd, hide_index=True, use_container_width=True, height=fit(sd),
                  column_config={"Registration Count": st.column_config.NumberColumn(format="%d")})
+    note('The answer given on the registration form. <b>No Source</b> = left blank or "Select".')
 
     section("Source Buckets")
     buck = view.groupby("bucket").size().reindex(BUCKET_ORDER).fillna(0).astype(int)
@@ -277,6 +323,13 @@ with right:
     bd.loc[len(bd)] = ["Total", int(buck.sum()), "100.00%"]
     st.dataframe(bd, hide_index=True, use_container_width=True, height=fit(bd),
                  column_config={"Reg.": st.column_config.NumberColumn(format="%d")})
+    # % here is of ALL registrations, so the 35% blanks drag both buckets down. The answered-only
+    # split is the one to quote when asked "is marketing working".
+    _ans = TOTAL - _ns
+    if _ans:
+        note(f'% is of all registrations. Of the <b>{_ans:,} who answered</b>: '
+             f'<b>{_tf / _ans * 100:.1f}%</b> teacher/friends, '
+             f'<b>{_mk / _ans * 100:.1f}%</b> marketing.')
 
 st.divider()
 
