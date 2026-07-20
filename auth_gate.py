@@ -42,14 +42,6 @@ def require_login(title: str = "Website Registrations Report"):
             "This report is not available right now: sign-in is not configured "
             "on this deployment. Please contact the report owner."
         )
-        # TEMPORARY diagnostic -- remove once sign-in works. Prints the NAMES of the
-        # top-level secrets sections only. Never print values: st.secrets holds the
-        # OAuth client secret.
-        try:
-            found = sorted(st.secrets.keys())
-        except Exception as exc:
-            found = f"could not read secrets: {type(exc).__name__}"
-        st.caption(f"diagnostic — secrets sections visible to this app: {found}")
         st.stop()
 
     if not st.user.is_logged_in:

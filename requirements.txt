@@ -1,3 +1,7 @@
-streamlit==1.59.0
+# The [auth] extra is what st.login() needs. httpx is listed explicitly because
+# Streamlit's OAuth code imports authlib.integrations.httpx_client, but httpx is only
+# an optional dependency of Authlib -- so it is NOT installed transitively, and the
+# app fails at sign-in with ModuleNotFoundError instead of at build time.
+streamlit[auth]==1.59.0
+httpx>=0.25
 pandas==2.2.3
-Authlib>=1.3.2
