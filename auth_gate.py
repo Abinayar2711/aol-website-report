@@ -34,6 +34,16 @@ def require_login(title: str = "Website Registrations Report"):
 
     Returns the viewer's email once access is granted, so callers can show it or log it.
     """
+    # st.user only grows an .is_logged_in attribute once Streamlit has parsed an [auth]
+    # block from secrets; without one it raises AttributeError. Check first and fail
+    # CLOSED -- a missing [auth] block must never fall through to rendering the report.
+    if "auth" not in st.secrets:
+        st.error(
+            "This report is not available right now: sign-in is not configured "
+            "on this deployment. Please contact the report owner."
+        )
+        st.stop()
+
     if not st.user.is_logged_in:
         st.markdown(f"### {title}")
         st.write(
