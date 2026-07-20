@@ -11,9 +11,14 @@ sys.path.insert(0, ".")
 import pandas as pd
 import streamlit as st
 from category_map import categorise, website_rows, CATEGORIES
+from auth_gate import require_login, sidebar_account
 
 st.set_page_config(page_title="Website Registrations Report", layout="wide",
                    page_icon="📈", initial_sidebar_state="collapsed")
+
+# Nothing below this line runs for an unauthenticated or non-AOL viewer.
+require_login("Website Registrations Report")
+sidebar_account()
 
 # UPDATE THIS whenever aol_website_rebuilt.csv is rebuilt.
 # It cannot be read from the file's mtime: git does not preserve modification times, so on

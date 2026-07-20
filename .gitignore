@@ -11,3 +11,6 @@ streamlit.log
 
 # ...except the single deduped file the app renders (15 MB, pseudonymous IDs only)
 !aol_website_rebuilt.csv
+
+# Never commit OAuth client secrets.
+.streamlit/secrets.toml
